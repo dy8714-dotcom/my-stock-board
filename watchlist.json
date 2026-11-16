@@ -2,7 +2,7 @@
   "title": "マイ株価ボード",
   "items": [
     {"symbol": "^N225", "name": "日経平均", "code": "N225", "link": "https://kabutan.jp/stock/?code=0000"},
-    {"symbol": "^TOPX", "name": "TOPIX", "code": "TOPX", "link": "https://kabutan.jp/stock/?code=0010"},
+    {"symbol": "1306.T", "name": "TOPIX(ETF)", "code": "1306", "link": "https://kabutan.jp/stock/?code=0010"},
     {"symbol": "2516.T", "name": "グロース250", "code": "2516"},
     {"symbol": "^DJI", "name": "ダウ平均", "code": "DJI"},
     {"symbol": "^IXIC", "name": "ナスダック", "code": "IXIC"},
