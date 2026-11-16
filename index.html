@@ -22,6 +22,10 @@ h1{margin:0;font-size:22px;font-weight:700}
 .btn[aria-pressed="true"]{background:#1d4f91;color:#fff}
 .btn:focus-visible,.lnk:focus-visible{outline:3px solid #1d4f91;outline-offset:2px}
 .lnk{font-size:12px;color:#1d3f6e;text-decoration:underline}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{min-height:44px;padding:0 22px;font:700 15px inherit;font-family:inherit;border:1px solid #1d4f91;border-bottom:3px solid #1d4f91;border-radius:4px 4px 0 0;background:#e9eef5;color:#1d4f91;cursor:pointer}
+.tab[aria-selected="true"]{background:#fff;color:#1b1f24;border-bottom-color:#fff}
+.tab:focus-visible{outline:3px solid #1d4f91;outline-offset:2px}
 #msg{display:none;padding:8px 12px;border-radius:4px;background:#fff3cd;color:#5c4400;font-size:13px}
 .grid{flex:1 1 0;min-height:0;display:grid;gap:6px}
 .tile{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;background:#fff;border:1px solid #aeb5be;border-radius:3px;overflow:hidden;color:inherit;text-decoration:none}
@@ -65,11 +69,11 @@ h1{margin:0;font-size:22px;font-weight:700}
       <div class="grp"><span class="lbl">表示数</span><span id="sizeBtns" class="grp"></span></div>
       <div class="grp">
         <button type="button" class="btn" id="jpBtn" aria-pressed="false">日本式配色（上昇=赤）</button>
-        <a class="lnk" id="editLink" href="#" target="_blank" rel="noopener" hidden>銘柄を編集</a>
-        <a class="lnk" id="runLink" href="#" target="_blank" rel="noopener" hidden>今すぐ更新</a>
+        <a class="lnk" id="editLink" href="#" target="_blank" rel="noopener" hidden>銘柄リストを直接編集</a>
       </div>
     </div>
   </div>
+  <div class="tabs" id="tabs" role="tablist" hidden></div>
   <div id="msg" role="status"></div>
   <div class="grid" id="grid"></div>
 </div>
@@ -102,12 +106,13 @@ h1{margin:0;font-size:22px;font-weight:700}
   var state = {
     size: Number(load('size', '8')),
     period: load('period', 'day'),
-    jp: load('jp', '0') === '1'
+    jp: load('jp', '0') === '1',
+    tab: load('tab', '')
   };
   if (SIZES.indexOf(state.size) < 0) state.size = 8;
   if (!PERIODS.some(function (p) { return p.key === state.period; })) state.period = 'day';
 
-  var watch = { title: 'マイ株価ボード', items: [] };
+  var watch = { title: 'マイ株価ボード', tabs: [{ id: 'all', name: '', items: [] }] };
   var data = { items: {}, updatedAt: null };
   var notices = [];
 
@@ -124,6 +129,32 @@ h1{margin:0;font-size:22px;font-weight:700}
   }
   function fmt(n, dec) {
     return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  }
+
+  // 古い形式（items だけ）も、新しい形式（tabs）も読めるようにする
+  function getTabs() {
+    if (watch && Array.isArray(watch.tabs) && watch.tabs.length) return watch.tabs;
+    return [{ id: 'all', name: '', items: (watch && watch.items) || [] }];
+  }
+  function currentTab() {
+    var tabs = getTabs();
+    for (var i = 0; i < tabs.length; i++) if (tabs[i].id === state.tab) return tabs[i];
+    return tabs[0];
+  }
+  function renderTabs() {
+    var tabs = getTabs();
+    var box = document.getElementById('tabs');
+    while (box.firstChild) box.removeChild(box.firstChild);
+    box.hidden = tabs.length < 2;
+    var cur = currentTab();
+    tabs.forEach(function (t) {
+      var b = el('button', 'tab', t.name || t.id);
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', t === cur ? 'true' : 'false');
+      b.addEventListener('click', function () { state.tab = t.id; save('tab', t.id); render(); });
+      box.appendChild(b);
+    });
   }
 
   // watchlist.json の1件を、表示用に整える
@@ -217,10 +248,11 @@ h1{margin:0;font-size:22px;font-weight:700}
     document.body.className = state.jp ? 'jp' : '';
     var size = state.size;
     var look = LOOK[size];
-    var items = watch.items.map(norm).slice(0, size * size);
+    renderTabs();
+    var items = (currentTab().items || []).map(norm).slice(0, size * size);
     var rows = Math.max(1, Math.ceil(items.length / size));
 
-    document.getElementById('app').style.minHeight = (110 + rows * look.minRow + (rows - 1) * 6) + 'px';
+    document.getElementById('app').style.minHeight = (110 + (getTabs().length > 1 ? 50 : 0) + rows * look.minRow + (rows - 1) * 6) + 'px';
     var grid = document.getElementById('grid');
     grid.style.gridTemplateColumns = 'repeat(' + size + ', minmax(0, 1fr))';
     grid.style.gridTemplateRows = 'repeat(' + rows + ', minmax(' + look.minRow + 'px, 1fr))';
@@ -286,9 +318,6 @@ h1{margin:0;font-size:22px;font-weight:700}
       var e = document.getElementById('editLink');
       e.href = base + '/edit/main/watchlist.json';
       e.hidden = false;
-      var r = document.getElementById('runLink');
-      r.href = base + '/actions/workflows/update.yml';
-      r.hidden = false;
     }
   }
 
@@ -305,7 +334,7 @@ h1{margin:0;font-size:22px;font-weight:700}
   getJson('watchlist.json').then(function (w) {
     watch = w;
     return getJson('data/latest.json').then(function (d) { data = d; }).catch(function () {
-      notices.push('まだ株価データがありません。GitHub の Actions で「株価データ更新」を実行してください。');
+      notices.push('まだ株価データがありません。Chrome拡張機能「株価ボード データ取得」で、株価データを取得してください。');
     });
   }).catch(function () {
     notices.push('watchlist.json を読み込めませんでした。');
