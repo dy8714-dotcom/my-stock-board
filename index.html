@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>マイ株価ボード</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#cfd5dc;color:#1c2733;line-height:1.25;font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;
+  --up:#0b7a35;--dn:#c8102e;--upBg:#eef5c9;--dnBg:#fde6e6;--upFill:rgba(11,122,53,.14);--dnFill:rgba(200,16,46,.14)}
+body.jp{--up:#c8102e;--dn:#0b5cad;--upBg:#fde6e6;--dnBg:#e3eefb;--upFill:rgba(200,16,46,.14);--dnFill:rgba(11,92,173,.14)}
+#app{max-width:1440px;margin:0 auto;padding:10px 12px;height:100vh;display:flex;flex-direction:column;gap:8px}
+.head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 24px}
+.ttl{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 14px}
+h1{margin:0;font-size:22px;font-weight:700}
+.sub{font-size:14px}
+.cap{font-size:12px;color:#2c3844}
+.ctl{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px}
+.grp{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.lbl{font-size:13px;font-weight:700}
+.btn{min-height:44px;padding:0 14px;font:700 14px inherit;font-family:inherit;border:1px solid #1d4f91;border-radius:4px;background:#fff;color:#1d4f91;cursor:pointer}
+.btn[aria-pressed="true"]{background:#1d4f91;color:#fff}
+.btn:focus-visible,.lnk:focus-visible{outline:3px solid #1d4f91;outline-offset:2px}
+.lnk{font-size:12px;color:#1d3f6e;text-decoration:underline}
+#msg{display:none;padding:8px 12px;border-radius:4px;background:#fff3cd;color:#5c4400;font-size:13px}
+.grid{flex:1 1 0;min-height:0;display:grid;gap:6px}
+.tile{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;background:#fff;border:1px solid #aeb5be;border-radius:3px;overflow:hidden;color:inherit;text-decoration:none}
+.tile:hover{box-shadow:0 0 0 2px #1d4f91}
+.tile:focus-visible{outline:3px solid #1d4f91;outline-offset:1px}
+.th{display:flex;align-items:baseline;gap:6px;padding:5px 8px 3px}
+.nm{font-size:var(--name);font-weight:700;color:#1b1f24;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.cd,.no{font-size:10px;color:#55606b;flex:none}
+.no{margin-left:auto}
+.tag{flex:none;font-size:10px;padding:0 4px;border-radius:2px;background:#fff3cd;color:#5c4400}
+.band{padding:1px 8px;text-align:center;background:#eef0f3}
+.up .band{background:var(--upBg)}
+.dn .band{background:var(--dnBg)}
+.pct{display:block;font-size:var(--pct);font-weight:700;font-variant-numeric:tabular-nums;line-height:1.25;color:#55606b}
+.up .pct,.up .ch{color:var(--up)}
+.dn .pct,.dn .ch{color:var(--dn)}
+.chart{flex:1 1 0;min-height:44px;position:relative}
+.chart svg{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
+.base{stroke:#6b7480;stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
+.ln{fill:none;stroke-width:1.5;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.c-up .ln{stroke:var(--up)}
+.c-dn .ln{stroke:var(--dn)}
+.c-up .ar{fill:var(--upFill)}
+.c-dn .ar{fill:var(--dnFill)}
+.nodata{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-size:12px;color:#55606b}
+.tp{display:flex;justify-content:space-between;align-items:baseline;gap:4px;padding:3px 8px 6px;font-variant-numeric:tabular-nums}
+.pr{font-size:var(--price);font-weight:700;color:#1b1f24}
+.ch{font-size:var(--chg);font-weight:700;color:#55606b}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="head">
+    <div class="ttl">
+      <h1 id="title">マイ株価ボード</h1>
+      <span class="sub" id="sub"></span>
+      <span class="cap" id="cap"></span>
+    </div>
+    <div class="ctl">
+      <div class="grp"><span class="lbl">チャート</span><span id="periodBtns" class="grp"></span></div>
+      <div class="grp"><span class="lbl">表示数</span><span id="sizeBtns" class="grp"></span></div>
+      <div class="grp">
+        <button type="button" class="btn" id="jpBtn" aria-pressed="false">日本式配色（上昇=赤）</button>
+        <a class="lnk" id="editLink" href="#" target="_blank" rel="noopener" hidden>銘柄を編集</a>
+        <a class="lnk" id="runLink" href="#" target="_blank" rel="noopener" hidden>今すぐ更新</a>
+      </div>
+    </div>
+  </div>
+  <div id="msg" role="status"></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var SIZES = [6, 7, 8, 9];
+  var LOOK = {
+    6: { minRow: 190, name: 15, pct: 30, price: 20, chg: 14 },
+    7: { minRow: 170, name: 14, pct: 26, price: 18, chg: 13 },
+    8: { minRow: 150, name: 13, pct: 22, price: 16, chg: 12 },
+    9: { minRow: 134, name: 12, pct: 19, price: 14, chg: 11 }
+  };
+  var PERIODS = [
+    { key: 'day', label: '当日', cap: '当日の値動き（点線＝前日終値）' },
+    { key: 'daily', label: '日足', cap: '日足 約3か月（点線＝期間の初値）' },
+    { key: 'weekly', label: '週足', cap: '週足 約1年（点線＝期間の初値）' }
+  ];
+  var SVGNS = 'http://www.w3.org/2000/svg';
+
+  function load(key, def) {
+    try { var v = window.localStorage.getItem('myBoard.' + key); return v === null ? def : v; } catch (e) { return def; }
+  }
+  function save(key, val) {
+    try { window.localStorage.setItem('myBoard.' + key, String(val)); } catch (e) { /* 保存できなくても動作に影響なし */ }
+  }
+
+  var state = {
+    size: Number(load('size', '8')),
+    period: load('period', 'day'),
+    jp: load('jp', '0') === '1'
+  };
+  if (SIZES.indexOf(state.size) < 0) state.size = 8;
+  if (!PERIODS.some(function (p) { return p.key === state.period; })) state.period = 'day';
+
+  var watch = { title: 'マイ株価ボード', items: [] };
+  var data = { items: {}, updatedAt: null };
+  var notices = [];
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined && text !== null) e.textContent = text;
+    return e;
+  }
+  function svgEl(tag, attrs) {
+    var e = document.createElementNS(SVGNS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function fmt(n, dec) {
+    return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  }
+
+  // watchlist.json の1件を、表示用に整える
+  function norm(it) {
+    var s = String(it.symbol || '');
+    var kind = it.kind || (/\.T$/.test(s) ? 'jp' : (/=X$/.test(s) ? 'fx' : (/^\^/.test(s) ? 'idx' : 'us')));
+    var code = it.code || s.replace(/\.T$/, '').replace(/^\^/, '').replace(/=X$/, '');
+    var dec = (it.decimals !== undefined && it.decimals !== null) ? Number(it.decimals) : (kind === 'fx' ? 3 : (kind === 'jp' ? 0 : 2));
+    var link = it.link || (kind === 'jp' ? 'https://kabutan.jp/stock/?code=' + encodeURIComponent(code) : 'https://finance.yahoo.com/quote/' + encodeURIComponent(s));
+    return { symbol: s, name: it.name || s, code: code, kind: kind, dec: dec, decFixed: (it.decimals !== undefined && it.decimals !== null), link: link };
+  }
+
+  // 折れ線のSVGを作る。values: 数値配列 / base: 点線の位置
+  function chartBox(values, base) {
+    var box = el('div', 'chart');
+    if (!values || values.length < 2 || !isFinite(base)) {
+      box.appendChild(el('div', 'nodata', 'チャートなし'));
+      return box;
+    }
+    var mn = base, mx = base, i;
+    for (i = 0; i < values.length; i++) { if (values[i] < mn) mn = values[i]; if (values[i] > mx) mx = values[i]; }
+    var span = (mx - mn) || 1;
+    mn -= span * 0.1; mx += span * 0.1; span = mx - mn;
+    function Y(v) { return Math.round((4 + (mx - v) / span * 62) * 10) / 10; }
+    var pts = [], n = values.length;
+    for (i = 0; i < n; i++) pts.push((Math.round(i * 200 / (n - 1) * 10) / 10) + ',' + Y(values[i]));
+    var by = Y(base);
+    var up = values[n - 1] >= base;
+    box.className = 'chart ' + (up ? 'c-up' : 'c-dn');
+    var svg = svgEl('svg', { viewBox: '0 0 200 70', preserveAspectRatio: 'none', 'aria-hidden': 'true' });
+    svg.appendChild(svgEl('polygon', { 'class': 'ar', points: pts.join(' ') + ' 200,' + by + ' 0,' + by }));
+    svg.appendChild(svgEl('line', { 'class': 'base', x1: '0', x2: '200', y1: String(by), y2: String(by) }));
+    svg.appendChild(svgEl('polyline', { 'class': 'ln', points: pts.join(' ') }));
+    box.appendChild(svg);
+    return box;
+  }
+
+  function buildTile(item, index) {
+    var rec = data.items ? data.items[item.symbol] : null;
+    var has = rec && typeof rec.price === 'number';
+    var a = el('a', 'tile');
+    a.href = item.link;
+    a.target = '_blank';
+    a.rel = 'noopener';
+
+    var th = el('div', 'th');
+    th.appendChild(el('span', 'nm', item.name));
+    if (state.size < 9) th.appendChild(el('span', 'cd', item.code));
+    if (has && rec.stale) th.appendChild(el('span', 'tag', '前回分'));
+    if (state.size < 8) th.appendChild(el('span', 'no', '#' + (index + 1)));
+    a.appendChild(th);
+
+    var band = el('div', 'band');
+    var pct = el('span', 'pct', '—');
+    band.appendChild(pct);
+    a.appendChild(band);
+
+    var values = null, base = NaN;
+    if (has) {
+      if (state.period === 'day') { values = rec.day; base = rec.prev; }
+      else { values = state.period === 'daily' ? rec.daily : rec.weekly; base = values && values.length ? values[0] : NaN; }
+    }
+    a.appendChild(chartBox(values, base));
+
+    var tp = el('div', 'tp');
+    var pr = el('span', 'pr', '—');
+    var ch = el('span', 'ch', '');
+    tp.appendChild(pr);
+    tp.appendChild(ch);
+    a.appendChild(tp);
+
+    if (has) {
+      var dec = item.dec;
+      if (item.kind === 'jp' && !item.decFixed && rec.price < 1000 && rec.price % 1 !== 0) dec = 1;
+      pr.textContent = fmt(rec.price, dec);
+      if (typeof rec.prev === 'number' && rec.prev !== 0) {
+        var diff = rec.price - rec.prev;
+        var p = diff / rec.prev * 100;
+        var sign = diff > 0 ? '+' : (diff < 0 ? '-' : '');
+        pct.textContent = sign + Math.abs(p).toFixed(2) + '%';
+        ch.textContent = sign + fmt(Math.abs(diff), dec);
+        a.className += diff > 0 ? ' up' : (diff < 0 ? ' dn' : '');
+      }
+    } else {
+      pr.textContent = 'データなし';
+    }
+    return a;
+  }
+
+  function render() {
+    document.body.className = state.jp ? 'jp' : '';
+    var size = state.size;
+    var look = LOOK[size];
+    var items = watch.items.map(norm).slice(0, size * size);
+    var rows = Math.max(1, Math.ceil(items.length / size));
+
+    document.getElementById('app').style.minHeight = (110 + rows * look.minRow + (rows - 1) * 6) + 'px';
+    var grid = document.getElementById('grid');
+    grid.style.gridTemplateColumns = 'repeat(' + size + ', minmax(0, 1fr))';
+    grid.style.gridTemplateRows = 'repeat(' + rows + ', minmax(' + look.minRow + 'px, 1fr))';
+    grid.style.setProperty('--name', look.name + 'px');
+    grid.style.setProperty('--pct', look.pct + 'px');
+    grid.style.setProperty('--price', look.price + 'px');
+    grid.style.setProperty('--chg', look.chg + 'px');
+    while (grid.firstChild) grid.removeChild(grid.firstChild);
+    items.forEach(function (it, i) { grid.appendChild(buildTile(it, i)); });
+
+    var period = PERIODS.filter(function (p) { return p.key === state.period; })[0];
+    document.getElementById('cap').textContent = period.cap;
+    document.getElementById('title').textContent = watch.title || 'マイ株価ボード';
+    document.title = watch.title || 'マイ株価ボード';
+
+    var sub = items.length + '銘柄';
+    if (data.updatedAt) {
+      try {
+        var d = new Date(data.updatedAt);
+        sub = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit' }).format(d) + ' 更新 ／ ' + sub;
+      } catch (e) { /* 日付を整形できなければ銘柄数のみ表示 */ }
+    }
+    document.getElementById('sub').textContent = sub;
+
+    var pb = document.getElementById('periodBtns');
+    var sb = document.getElementById('sizeBtns');
+    PERIODS.forEach(function (p, i) { pb.children[i].setAttribute('aria-pressed', p.key === state.period ? 'true' : 'false'); });
+    SIZES.forEach(function (n, i) { sb.children[i].setAttribute('aria-pressed', n === state.size ? 'true' : 'false'); });
+    document.getElementById('jpBtn').setAttribute('aria-pressed', state.jp ? 'true' : 'false');
+    showNotices();
+  }
+
+  function showNotices() {
+    var msgs = notices.slice();
+    if (data.stopped) msgs.push('株価の取得が途中で中止されました。取得できなかった銘柄は前回のデータを表示しています。（' + data.stopped + '）');
+    var box = document.getElementById('msg');
+    box.textContent = msgs.join(' ／ ');
+    box.style.display = msgs.length ? 'block' : 'none';
+  }
+
+  function makeButtons() {
+    var pb = document.getElementById('periodBtns');
+    PERIODS.forEach(function (p) {
+      var b = el('button', 'btn', p.label);
+      b.type = 'button';
+      b.addEventListener('click', function () { state.period = p.key; save('period', p.key); render(); });
+      pb.appendChild(b);
+    });
+    var sb = document.getElementById('sizeBtns');
+    SIZES.forEach(function (n) {
+      var b = el('button', 'btn', n + '列×' + n + '行（' + (n * n) + '）');
+      b.type = 'button';
+      b.addEventListener('click', function () { state.size = n; save('size', n); render(); });
+      sb.appendChild(b);
+    });
+    document.getElementById('jpBtn').addEventListener('click', function () { state.jp = !state.jp; save('jp', state.jp ? '1' : '0'); render(); });
+
+    var host = window.location.hostname;
+    var m = /^([^.]+)\.github\.io$/.exec(host);
+    var repo = window.location.pathname.split('/')[1];
+    if (m && repo) {
+      var base = 'https://github.com/' + m[1] + '/' + repo;
+      var e = document.getElementById('editLink');
+      e.href = base + '/edit/main/watchlist.json';
+      e.hidden = false;
+      var r = document.getElementById('runLink');
+      r.href = base + '/actions/workflows/update.yml';
+      r.hidden = false;
+    }
+  }
+
+  function getJson(url) {
+    return fetch(url, { cache: 'no-store' }).then(function (res) {
+      if (!res.ok) throw new Error(String(res.status));
+      return res.json();
+    });
+  }
+
+  makeButtons();
+  render();
+
+  getJson('watchlist.json').then(function (w) {
+    watch = w;
+    return getJson('data/latest.json').then(function (d) { data = d; }).catch(function () {
+      notices.push('まだ株価データがありません。GitHub の Actions で「株価データ更新」を実行してください。');
+    });
+  }).catch(function () {
+    notices.push('watchlist.json を読み込めませんでした。');
+  }).then(render);
+})();
+</script>
+</body>
+</html>
