@@ -83,6 +83,41 @@ async function readJson(path, fallback) {
   try { return JSON.parse(await readFile(path, 'utf8')); } catch (e) { return fallback; }
 }
 
+
+// ---- 接続テスト：Yahooに断られたとき、ほかの取得元がGitHubのサーバーから使えるかを1回ずつ試す ----
+async function probe() {
+  const targets = [
+    ['Yahoo(query2) 日経平均', 'https://query2.finance.yahoo.com/v8/finance/chart/%5EN225?interval=1d&range=5d'],
+    ['Yahoo(spark) 日経平均', 'https://query1.finance.yahoo.com/v7/finance/spark?symbols=%5EN225&range=1d&interval=5m'],
+    ['Stooq 日足 日経平均', 'https://stooq.com/q/d/l/?s=%5Enkx&i=d'],
+    ['Stooq 日足 トヨタ 7203', 'https://stooq.com/q/d/l/?s=7203.jp&i=d'],
+    ['Stooq 日足 NVDA', 'https://stooq.com/q/d/l/?s=nvda.us&i=d'],
+    ['Stooq 日足 ドル円', 'https://stooq.com/q/d/l/?s=usdjpy&i=d'],
+    ['Stooq 5分足 トヨタ 7203', 'https://stooq.com/q/d/l/?s=7203.jp&i=5'],
+    ['Stooq(stooq.pl) 日足 日経平均', 'https://stooq.pl/q/d/l/?s=%5Enkx&i=d']
+  ];
+  const rows = [];
+  for (const [name, url] of targets) {
+    let cell;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 15000);
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: '*/*' }, signal: ctrl.signal });
+      const body = await res.text();
+      const head = body.slice(0, 80).replace(/[\r\n|]+/g, ' / ');
+      const lineCount = body.split('\n').length;
+      cell = `HTTP ${res.status} / ${body.length}文字 / ${lineCount}行 / 先頭: ${head}`;
+    } catch (e) {
+      cell = `接続失敗: ${String(e && e.message ? e.message : e)}`;
+    }
+    clearTimeout(timer);
+    rows.push(`| ${name} | ${cell.replace(/\|/g, ' ')} |`);
+    console.log(name, cell);
+    await sleep(3000);
+  }
+  return ['', '## 接続テスト（Yahooに断られたため実施）', '', '| 取得元 | 結果 |', '|---|---|', ...rows, ''].join('\n');
+}
+
 const watch = await readJson('watchlist.json', null);
 if (!watch || !Array.isArray(watch.items)) {
   console.error('watchlist.json を読めませんでした。');
@@ -172,6 +207,7 @@ lines.push('');
 lines.push('| 銘柄 | 結果 | 内容 |');
 lines.push('|---|---|---|');
 for (const l of log) lines.push(`| ${l.sym} | ${l.ok ? 'OK' : '**失敗**'} | ${l.note} |`);
-const md = lines.join('\n') + '\n';
+let md = lines.join('\n') + '\n';
+if (stopped) md += await probe();
 console.log(md);
 if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, md);
