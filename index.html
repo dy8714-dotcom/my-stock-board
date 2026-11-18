@@ -23,8 +23,10 @@ h1{margin:0;font-size:22px;font-weight:700}
 .btn:focus-visible,.lnk:focus-visible{outline:3px solid #1d4f91;outline-offset:2px}
 .lnk{font-size:12px;color:#1d3f6e;text-decoration:underline}
 .tabs{display:flex;flex-wrap:wrap;gap:6px}
-.tab{min-height:44px;padding:0 22px;font:700 15px inherit;font-family:inherit;border:1px solid #1d4f91;border-bottom:3px solid #1d4f91;border-radius:4px 4px 0 0;background:#e9eef5;color:#1d4f91;cursor:pointer}
+.tab{min-height:48px;padding:0 18px;text-align:left;line-height:1.3;font-weight:700;font-size:15px;font-family:inherit;border:1px solid #1d4f91;border-bottom:3px solid #1d4f91;border-radius:4px 4px 0 0;background:#e9eef5;color:#1d4f91;cursor:pointer}
 .tab[aria-selected="true"]{background:#fff;color:#1b1f24;border-bottom-color:#fff}
+.tm{display:block;font-size:11px;font-weight:400;color:#2c3844}
+.tm.old{color:#8a3b00}
 .tab:focus-visible{outline:3px solid #1d4f91;outline-offset:2px}
 #msg{display:none;padding:8px 12px;border-radius:4px;background:#fff3cd;color:#5c4400;font-size:13px}
 .grid{flex:1 1 0;min-height:0;display:grid;gap:6px}
@@ -33,7 +35,9 @@ h1{margin:0;font-size:22px;font-weight:700}
 .tile:focus-visible{outline:3px solid #1d4f91;outline-offset:1px}
 .th{display:flex;align-items:baseline;gap:6px;padding:5px 8px 3px}
 .nm{font-size:var(--name);font-weight:700;color:#1b1f24;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.cd,.no{font-size:10px;color:#55606b;flex:none}
+.cd{font-size:var(--code);color:#44505c;flex:none;font-variant-numeric:tabular-nums}
+.no{font-size:10px;color:#55606b;flex:none}
+.cat{height:18px;flex:none;box-sizing:border-box;padding:2px 6px;font-size:11px;font-weight:700;line-height:14px;color:#1b1f24;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .no{margin-left:auto}
 .tag{flex:none;font-size:10px;padding:0 4px;border-radius:2px;background:#fff3cd;color:#5c4400}
 .band{padding:1px 8px;text-align:center;background:#eef0f3}
@@ -84,10 +88,10 @@ h1{margin:0;font-size:22px;font-weight:700}
 
   var SIZES = [6, 7, 8, 9];
   var LOOK = {
-    6: { minRow: 190, name: 15, pct: 30, price: 20, chg: 14 },
-    7: { minRow: 170, name: 14, pct: 26, price: 18, chg: 13 },
-    8: { minRow: 150, name: 13, pct: 22, price: 16, chg: 12 },
-    9: { minRow: 134, name: 12, pct: 19, price: 14, chg: 11 }
+    6: { minRow: 190, name: 15, pct: 30, price: 20, chg: 14, code: 11 },
+    7: { minRow: 170, name: 14, pct: 26, price: 18, chg: 13, code: 11 },
+    8: { minRow: 150, name: 13, pct: 22, price: 16, chg: 12, code: 10 },
+    9: { minRow: 134, name: 12, pct: 19, price: 14, chg: 11, code: 9 }
   };
   var PERIODS = [
     { key: 'day', label: '当日', cap: '当日の値動き（点線＝前日終値）' },
@@ -141,6 +145,22 @@ h1{margin:0;font-size:22px;font-weight:700}
     for (var i = 0; i < tabs.length; i++) if (tabs[i].id === state.tab) return tabs[i];
     return tabs[0];
   }
+  var PALETTE = ['#bfe3dc', '#f6d99a', '#c4d8f2', '#dccbf0', '#f4c9d0', '#d6e8b8', '#f3c7a6', '#cfd8e3'];
+  function jstParts(ms) {
+    var d = new Date(ms + 9 * 3600 * 1000);
+    return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), hh: d.getUTCHours(), mm: d.getUTCMinutes(), day: Math.floor((ms + 9 * 3600 * 1000) / 86400000) };
+  }
+  function tabTime(tab) {
+    var min = null;
+    (tab.items || []).forEach(function (it) {
+      var rec = data.items ? data.items[it.symbol] : null;
+      if (rec && rec.at) {
+        var t = Date.parse(rec.at);
+        if (isFinite(t) && (min === null || t < min)) min = t;
+      }
+    });
+    return min;
+  }
   function renderTabs() {
     var tabs = getTabs();
     var box = document.getElementById('tabs');
@@ -149,6 +169,16 @@ h1{margin:0;font-size:22px;font-weight:700}
     var cur = currentTab();
     tabs.forEach(function (t) {
       var b = el('button', 'tab', t.name || t.id);
+      var tt = tabTime(t);
+      if (tt !== null) {
+        var P = jstParts(tt);
+        var latest = 0;
+        getTabs().forEach(function (x) { var v = tabTime(x); if (v !== null && v > latest) latest = v; });
+        var diff = jstParts(latest).day - P.day;
+        var label = P.m + '/' + P.d + ' ' + (P.hh < 10 ? '0' : '') + P.hh + ':' + (P.mm < 10 ? '0' : '') + P.mm;
+        if (diff >= 1) label += diff === 1 ? '（前日）' : '（' + diff + '日前）';
+        b.appendChild(el('span', 'tm' + (diff >= 1 ? ' old' : ''), label));
+      }
       b.type = 'button';
       b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', t === cur ? 'true' : 'false');
@@ -164,7 +194,7 @@ h1{margin:0;font-size:22px;font-weight:700}
     var code = it.code || s.replace(/\.T$/, '').replace(/^\^/, '').replace(/=X$/, '');
     var dec = (it.decimals !== undefined && it.decimals !== null) ? Number(it.decimals) : (kind === 'fx' ? 3 : (kind === 'jp' ? 0 : 2));
     var link = it.link || (kind === 'jp' ? 'https://kabutan.jp/stock/?code=' + encodeURIComponent(code) : 'https://finance.yahoo.com/quote/' + encodeURIComponent(s));
-    return { symbol: s, name: it.name || s, code: code, kind: kind, dec: dec, decFixed: (it.decimals !== undefined && it.decimals !== null), link: link };
+    return { cat: String(it.cat || ''), symbol: s, name: it.name || s, code: code, kind: kind, dec: dec, decFixed: (it.decimals !== undefined && it.decimals !== null), link: link };
   }
 
   // 折れ線のSVGを作る。values: 数値配列 / base: 点線の位置
@@ -192,7 +222,7 @@ h1{margin:0;font-size:22px;font-weight:700}
     return box;
   }
 
-  function buildTile(item, index) {
+  function buildTile(item, index, catInfo) {
     var rec = data.items ? data.items[item.symbol] : null;
     var has = rec && typeof rec.price === 'number';
     var a = el('a', 'tile');
@@ -200,9 +230,14 @@ h1{margin:0;font-size:22px;font-weight:700}
     a.target = '_blank';
     a.rel = 'noopener';
 
+    if (catInfo && catInfo.has) {
+      var cb = el('div', 'cat', catInfo.label);
+      cb.style.background = catInfo.bg;
+      a.appendChild(cb);
+    }
     var th = el('div', 'th');
     th.appendChild(el('span', 'nm', item.name));
-    if (state.size < 9) th.appendChild(el('span', 'cd', item.code));
+    th.appendChild(el('span', 'cd', item.code));
     if (has && rec.stale) th.appendChild(el('span', 'tag', '前回分'));
     if (state.size < 8) th.appendChild(el('span', 'no', '#' + (index + 1)));
     a.appendChild(th);
@@ -251,17 +286,28 @@ h1{margin:0;font-size:22px;font-weight:700}
     renderTabs();
     var items = (currentTab().items || []).map(norm).slice(0, size * size);
     var rows = Math.max(1, Math.ceil(items.length / size));
+    var hasCat = items.some(function (it) { return !!it.cat; });
+    var catColor = {}, catCount = 0;
+    var catInfos = items.map(function (it, i) {
+      if (!hasCat) return { has: false };
+      if (!it.cat) return { has: true, label: '', bg: '#e6e9ee' };
+      if (catColor[it.cat] === undefined) { catColor[it.cat] = PALETTE[catCount % PALETTE.length]; catCount++; }
+      var first = i === 0 || items[i - 1].cat !== it.cat;
+      return { has: true, label: first ? it.cat : '', bg: catColor[it.cat] };
+    });
+    var minRow = look.minRow + (hasCat ? 18 : 0);
 
-    document.getElementById('app').style.minHeight = (110 + (getTabs().length > 1 ? 50 : 0) + rows * look.minRow + (rows - 1) * 6) + 'px';
+    document.getElementById('app').style.minHeight = (110 + (getTabs().length > 1 ? 56 : 0) + rows * minRow + (rows - 1) * 6) + 'px';
     var grid = document.getElementById('grid');
     grid.style.gridTemplateColumns = 'repeat(' + size + ', minmax(0, 1fr))';
-    grid.style.gridTemplateRows = 'repeat(' + rows + ', minmax(' + look.minRow + 'px, 1fr))';
+    grid.style.gridTemplateRows = 'repeat(' + rows + ', minmax(' + minRow + 'px, 1fr))';
     grid.style.setProperty('--name', look.name + 'px');
     grid.style.setProperty('--pct', look.pct + 'px');
     grid.style.setProperty('--price', look.price + 'px');
     grid.style.setProperty('--chg', look.chg + 'px');
+    grid.style.setProperty('--code', look.code + 'px');
     while (grid.firstChild) grid.removeChild(grid.firstChild);
-    items.forEach(function (it, i) { grid.appendChild(buildTile(it, i)); });
+    items.forEach(function (it, i) { grid.appendChild(buildTile(it, i, catInfos[i])); });
 
     var period = PERIODS.filter(function (p) { return p.key === state.period; })[0];
     document.getElementById('cap').textContent = period.cap;
