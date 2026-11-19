@@ -39,6 +39,12 @@ h1{margin:0;font-size:22px;font-weight:700}
 .no{font-size:10px;color:#55606b;flex:none}
 .cat{height:18px;flex:none;box-sizing:border-box;padding:2px 6px;font-size:11px;font-weight:700;line-height:14px;color:#1b1f24;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .no{margin-left:auto}
+.sel{font:inherit;font-size:13px;padding:5px 6px;border:1px solid #8a94a0;border-radius:4px;background:#fff;color:#1b1f24}
+.cw{vector-effect:non-scaling-stroke;stroke-width:1}
+.cu .cw{stroke:var(--up)}.cd2 .cw{stroke:var(--dn)}
+.cu .cb2{fill:var(--up);stroke:var(--up)}.cd2 .cb2{fill:#fff;stroke:var(--dn)}
+.cb2{vector-effect:non-scaling-stroke;stroke-width:1}
+.catlbl{position:relative;z-index:2;align-self:start;height:18px;margin:1px 1px 0;box-sizing:border-box;padding:2px 6px;font-size:11px;font-weight:700;line-height:14px;color:#1b1f24;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;border-radius:2px 2px 0 0}
 .tag{flex:none;font-size:10px;padding:0 4px;border-radius:2px;background:#fff3cd;color:#5c4400}
 .band{padding:1px 8px;text-align:center;background:#eef0f3}
 .up .band{background:var(--upBg)}
@@ -71,6 +77,8 @@ h1{margin:0;font-size:22px;font-weight:700}
     <div class="ctl">
       <div class="grp"><span class="lbl">チャート</span><span id="periodBtns" class="grp"></span></div>
       <div class="grp"><span class="lbl">表示数</span><span id="sizeBtns" class="grp"></span></div>
+      <div class="grp"><span class="lbl">日足・週足の形</span><button type="button" class="btn" id="candleBtn" aria-pressed="false">ローソク足</button></div>
+      <div class="grp"><label class="lbl" for="siteSel">開くサイト</label><select id="siteSel" class="sel"></select></div>
       <div class="grp">
         <button type="button" class="btn" id="jpBtn" aria-pressed="false">日本式配色（上昇=赤）</button>
         <a class="lnk" id="editLink" href="#" target="_blank" rel="noopener" hidden>銘柄を編集</a>
@@ -98,6 +106,25 @@ h1{margin:0;font-size:22px;font-weight:700}
     { key: 'daily', label: '日足', cap: '日足 約3か月（点線＝期間の初値）' },
     { key: 'weekly', label: '週足', cap: '週足 約1年（点線＝期間の初値）' }
   ];
+  var SITES = [
+    { key: 'kabutan', label: '株探' },
+    { key: 'yahoo', label: 'Yahoo!ファイナンス' },
+    { key: 'shikiho', label: '四季報オンライン' },
+    { key: 'monex', label: 'マネックス 銘柄スカウター' },
+    { key: 'tv', label: 'TradingView' }
+  ];
+  // 日本株の銘柄コードから、選んだサイトのページを作る（日本株以外は、Yahoo!ファイナンスを開く）
+  function siteLink(kind, code, symbol) {
+    var c = encodeURIComponent(code);
+    if (kind !== 'jp') return 'https://finance.yahoo.com/quote/' + encodeURIComponent(symbol);
+    switch (state.site) {
+      case 'yahoo': return 'https://finance.yahoo.co.jp/quote/' + c + '.T';
+      case 'shikiho': return 'https://shikiho.toyokeizai.net/stocks/' + c;
+      case 'monex': return 'https://monex.ifis.co.jp/index.php?sa=report_zaimu&bcode=' + c;
+      case 'tv': return 'https://www.tradingview.com/chart/?symbol=' + encodeURIComponent('TSE:' + code);
+      default: return 'https://kabutan.jp/stock/?code=' + c;
+    }
+  }
   var SVGNS = 'http://www.w3.org/2000/svg';
 
   function load(key, def) {
@@ -111,9 +138,12 @@ h1{margin:0;font-size:22px;font-weight:700}
     size: Number(load('size', '8')),
     period: load('period', 'day'),
     jp: load('jp', '0') === '1',
-    tab: load('tab', '')
+    tab: load('tab', ''),
+    candle: load('candle', '0') === '1',
+    site: load('site', 'kabutan')
   };
   if (SIZES.indexOf(state.size) < 0) state.size = 8;
+  if (!SITES.some(function (x) { return x.key === state.site; })) state.site = 'kabutan';
   if (!PERIODS.some(function (p) { return p.key === state.period; })) state.period = 'day';
 
   var watch = { title: 'マイ株価ボード', tabs: [{ id: 'all', name: '', items: [] }] };
@@ -193,8 +223,32 @@ h1{margin:0;font-size:22px;font-weight:700}
     var kind = it.kind || (/\.T$/.test(s) ? 'jp' : (/=X$/.test(s) ? 'fx' : (/^\^/.test(s) ? 'idx' : 'us')));
     var code = it.code || s.replace(/\.T$/, '').replace(/^\^/, '').replace(/=X$/, '');
     var dec = (it.decimals !== undefined && it.decimals !== null) ? Number(it.decimals) : (kind === 'fx' ? 3 : (kind === 'jp' ? 0 : 2));
-    var link = it.link || (kind === 'jp' ? 'https://kabutan.jp/stock/?code=' + encodeURIComponent(code) : 'https://finance.yahoo.com/quote/' + encodeURIComponent(s));
+    var link = it.link || siteLink(kind, code, s);
     return { cat: String(it.cat || ''), symbol: s, name: it.name || s, code: code, kind: kind, dec: dec, decFixed: (it.decimals !== undefined && it.decimals !== null), link: link };
+  }
+
+  // ローソク足のSVGを作る。bars: [[始値,高値,安値,終値], ...]
+  function candleBox(bars) {
+    var box = el('div', 'chart');
+    var n = bars ? bars.length : 0, i;
+    if (n < 2) { box.appendChild(el('div', 'nodata', 'チャートなし')); return box; }
+    var mn = Infinity, mx = -Infinity;
+    for (i = 0; i < n; i++) { if (bars[i][2] < mn) mn = bars[i][2]; if (bars[i][1] > mx) mx = bars[i][1]; }
+    var span = (mx - mn) || 1;
+    mn -= span * 0.08; mx += span * 0.08; span = mx - mn;
+    function Y(v) { return Math.round((4 + (mx - v) / span * 62) * 10) / 10; }
+    var step = 200 / n, bw = Math.max(step * 0.62, 0.6);
+    var svg = svgEl('svg', { viewBox: '0 0 200 70', preserveAspectRatio: 'none', 'aria-hidden': 'true' });
+    for (i = 0; i < n; i++) {
+      var b = bars[i], x = Math.round((i + 0.5) * step * 100) / 100;
+      var g = svgEl('g', { 'class': b[3] >= b[0] ? 'cu' : 'cd2' });
+      g.appendChild(svgEl('line', { 'class': 'cw', x1: String(x), x2: String(x), y1: String(Y(b[1])), y2: String(Y(b[2])) }));
+      var yt = Y(Math.max(b[0], b[3])), yb = Y(Math.min(b[0], b[3]));
+      g.appendChild(svgEl('rect', { 'class': 'cb2', x: String(Math.round((x - bw / 2) * 100) / 100), width: String(Math.round(bw * 100) / 100), y: String(yt), height: String(Math.max(yb - yt, 0.8)) }));
+      svg.appendChild(g);
+    }
+    box.appendChild(svg);
+    return box;
   }
 
   // 折れ線のSVGを作る。values: 数値配列 / base: 点線の位置
@@ -231,7 +285,7 @@ h1{margin:0;font-size:22px;font-weight:700}
     a.rel = 'noopener';
 
     if (catInfo && catInfo.has) {
-      var cb = el('div', 'cat', catInfo.label);
+      var cb = el('div', 'cat', '');
       cb.style.background = catInfo.bg;
       a.appendChild(cb);
     }
@@ -252,7 +306,12 @@ h1{margin:0;font-size:22px;font-weight:700}
       if (state.period === 'day') { values = rec.day; base = rec.prev; }
       else { values = state.period === 'daily' ? rec.daily : rec.weekly; base = values && values.length ? values[0] : NaN; }
     }
-    a.appendChild(chartBox(values, base));
+    var bars = null;
+    if (has && state.candle && state.period !== 'day') {
+      var ob = state.period === 'daily' ? rec.dailyOhlc : rec.weeklyOhlc;
+      if (ob && ob.length >= 2) bars = ob;
+    }
+    a.appendChild(bars ? candleBox(bars) : chartBox(values, base));
 
     var tp = el('div', 'tp');
     var pr = el('span', 'pr', '—');
@@ -307,10 +366,35 @@ h1{margin:0;font-size:22px;font-weight:700}
     grid.style.setProperty('--chg', look.chg + 'px');
     grid.style.setProperty('--code', look.code + 'px');
     while (grid.firstChild) grid.removeChild(grid.firstChild);
-    items.forEach(function (it, i) { grid.appendChild(buildTile(it, i, catInfos[i])); });
+    items.forEach(function (it, i) {
+      var t = buildTile(it, i, catInfos[i]);
+      t.style.gridRow = String(Math.floor(i / size) + 1);
+      t.style.gridColumn = String((i % size) + 1);
+      grid.appendChild(t);
+    });
+    // カテゴリ名は、同じ行で続く同じカテゴリをひとまとめにして、中央に1つだけ表示します
+    if (hasCat) {
+      var i0 = 0;
+      while (i0 < items.length) {
+        var c = items[i0].cat, row = Math.floor(i0 / size), j = i0;
+        while (j + 1 < items.length && items[j + 1].cat === c && Math.floor((j + 1) / size) === row) j++;
+        var firstOfGroup = i0 === 0 || items[i0 - 1].cat !== c;
+        var rowStart = (i0 % size) === 0;
+        // 行をまたいだ続きにも、見失わないよう名前を表示します
+        if (c && (firstOfGroup || rowStart)) {
+          var lb = el('div', 'catlbl', c);
+          lb.title = c;
+          lb.style.background = catInfos[i0].bg;
+          lb.style.gridRow = String(row + 1);
+          lb.style.gridColumn = (i0 % size + 1) + ' / span ' + (j - i0 + 1);
+          grid.appendChild(lb);
+        }
+        i0 = j + 1;
+      }
+    }
 
     var period = PERIODS.filter(function (p) { return p.key === state.period; })[0];
-    document.getElementById('cap').textContent = period.cap;
+    document.getElementById('cap').textContent = (state.candle && state.period !== 'day') ? period.cap.replace(/（.*）/, '（ローソク足）') : period.cap;
     document.getElementById('title').textContent = watch.title || 'マイ株価ボード';
     document.title = watch.title || 'マイ株価ボード';
 
@@ -328,6 +412,7 @@ h1{margin:0;font-size:22px;font-weight:700}
     PERIODS.forEach(function (p, i) { pb.children[i].setAttribute('aria-pressed', p.key === state.period ? 'true' : 'false'); });
     SIZES.forEach(function (n, i) { sb.children[i].setAttribute('aria-pressed', n === state.size ? 'true' : 'false'); });
     document.getElementById('jpBtn').setAttribute('aria-pressed', state.jp ? 'true' : 'false');
+    document.getElementById('candleBtn').setAttribute('aria-pressed', state.candle ? 'true' : 'false');
     showNotices();
   }
 
@@ -354,6 +439,10 @@ h1{margin:0;font-size:22px;font-weight:700}
       b.addEventListener('click', function () { state.size = n; save('size', n); render(); });
       sb.appendChild(b);
     });
+    document.getElementById('candleBtn').addEventListener('click', function () { state.candle = !state.candle; save('candle', state.candle ? '1' : '0'); render(); });
+    var ss = document.getElementById('siteSel');
+    SITES.forEach(function (x) { var o = el('option', '', x.label); o.value = x.key; if (x.key === state.site) o.selected = true; ss.appendChild(o); });
+    ss.addEventListener('change', function () { state.site = ss.value; save('site', state.site); render(); });
     document.getElementById('jpBtn').addEventListener('click', function () { state.jp = !state.jp; save('jp', state.jp ? '1' : '0'); render(); });
 
     var host = window.location.hostname;
