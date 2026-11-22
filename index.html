@@ -9,7 +9,7 @@
 body{margin:0;background:#cfd5dc;color:#1c2733;line-height:1.25;font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;
   --up:#0b7a35;--dn:#c8102e;--upBg:#eef5c9;--dnBg:#fde6e6;--upFill:rgba(11,122,53,.14);--dnFill:rgba(200,16,46,.14)}
 body.jp{--up:#c8102e;--dn:#0b5cad;--upBg:#fde6e6;--dnBg:#e3eefb;--upFill:rgba(200,16,46,.14);--dnFill:rgba(11,92,173,.14)}
-#app{max-width:1440px;margin:0 auto;padding:10px 12px;height:100vh;display:flex;flex-direction:column;gap:8px}
+#app{max-width:2400px;margin:0 auto;padding:10px 12px;height:100vh;display:flex;flex-direction:column;gap:8px}
 .head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 24px}
 .ttl{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 14px}
 h1{margin:0;font-size:22px;font-weight:700}
@@ -94,12 +94,13 @@ h1{margin:0;font-size:22px;font-weight:700}
 (function () {
   'use strict';
 
-  var SIZES = [6, 7, 8, 9];
+  var SIZES = [6, 7, 8, 9, 10];
   var LOOK = {
     6: { minRow: 190, name: 15, pct: 30, price: 20, chg: 14, code: 11 },
     7: { minRow: 170, name: 14, pct: 26, price: 18, chg: 13, code: 11 },
     8: { minRow: 150, name: 13, pct: 22, price: 16, chg: 12, code: 10 },
-    9: { minRow: 134, name: 12, pct: 19, price: 14, chg: 11, code: 9 }
+    9: { minRow: 134, name: 12, pct: 19, price: 14, chg: 11, code: 9 },
+    10: { minRow: 122, name: 11, pct: 17, price: 13, chg: 10, code: 9 }
   };
   var PERIODS = [
     { key: 'day', label: '当日', cap: '当日の値動き（点線＝前日終値）' },
