@@ -9,7 +9,7 @@
 body{margin:0;background:#cfd5dc;color:#1c2733;line-height:1.25;font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;
   --up:#0b7a35;--dn:#c8102e;--upBg:#eef5c9;--dnBg:#fde6e6;--upFill:rgba(11,122,53,.14);--dnFill:rgba(200,16,46,.14)}
 body.jp{--up:#c8102e;--dn:#0b5cad;--upBg:#fde6e6;--dnBg:#e3eefb;--upFill:rgba(200,16,46,.14);--dnFill:rgba(11,92,173,.14)}
-#app{max-width:2400px;margin:0 auto;padding:10px 12px;height:100vh;display:flex;flex-direction:column;gap:8px}
+#app{max-width:2400px;margin:0 auto;padding:10px 12px;min-height:100vh;display:flex;flex-direction:column;gap:8px}
 .head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 24px}
 .ttl{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 14px}
 h1{margin:0;font-size:22px;font-weight:700}
@@ -29,7 +29,7 @@ h1{margin:0;font-size:22px;font-weight:700}
 .tm.old{color:#8a3b00}
 .tab:focus-visible{outline:3px solid #1d4f91;outline-offset:2px}
 #msg{display:none;padding:8px 12px;border-radius:4px;background:#fff3cd;color:#5c4400;font-size:13px}
-.grid{flex:1 1 0;min-height:0;display:grid;gap:6px}
+.grid{display:grid;gap:6px;align-items:stretch}
 .tile{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;background:#fff;border:1px solid #aeb5be;border-radius:3px;overflow:hidden;color:inherit;text-decoration:none}
 .tile:hover{box-shadow:0 0 0 2px #1d4f91}
 .tile:focus-visible{outline:3px solid #1d4f91;outline-offset:1px}
@@ -38,7 +38,21 @@ h1{margin:0;font-size:22px;font-weight:700}
 .cd{font-size:var(--code);color:#44505c;flex:none;font-variant-numeric:tabular-nums}
 .no{font-size:10px;color:#55606b;flex:none}
 .cat{height:18px;flex:none;box-sizing:border-box;padding:2px 6px;font-size:11px;font-weight:700;line-height:14px;color:#1b1f24;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.no{margin-left:auto}
+.xr{display:flex;justify-content:space-between;gap:4px;padding:1px 8px;font-size:var(--xs,11px);color:#44505c;white-space:nowrap;overflow:hidden;font-variant-numeric:tabular-nums}
+.xr b{color:#1b1f24}
+.xr .u{color:var(--up)}.xr .d{color:var(--dn)}
+.rg{padding:2px 8px 1px}
+.rg .t{display:flex;justify-content:space-between;font-size:calc(var(--xs,11px) - 1px);color:#55606b;white-space:nowrap}
+.rg .bar{position:relative;height:6px;background:#e1e5ea;border-radius:3px;margin-top:2px}
+.rg .bar i{position:absolute;top:-2px;width:3px;height:10px;background:#1b1f24}
+.sp{padding-bottom:6px}
+.ma5{fill:none;stroke:#e08a00;stroke-width:1.3;vector-effect:non-scaling-stroke}
+.ma25{fill:none;stroke:#6a3fb5;stroke-width:1.3;vector-effect:non-scaling-stroke}
+.vb{fill:#c9ced6}
+.vu{fill:#e8a0a8}.vd{fill:#9ab9dc}
+#showPanel{display:none;background:#fff;border:1px solid #8a94a0;border-radius:4px;padding:8px 12px;font-size:13px}
+#showPanel.on{display:block}
+#showPanel label{display:inline-flex;align-items:center;gap:4px;margin:2px 14px 2px 0;cursor:pointer}
 .sel{font:inherit;font-size:13px;padding:5px 6px;border:1px solid #8a94a0;border-radius:4px;background:#fff;color:#1b1f24}
 .cw{vector-effect:non-scaling-stroke;stroke-width:1}
 .cu .cw{stroke:var(--up)}.cd2 .cw{stroke:var(--dn)}
@@ -52,7 +66,7 @@ h1{margin:0;font-size:22px;font-weight:700}
 .pct{display:block;font-size:var(--pct);font-weight:700;font-variant-numeric:tabular-nums;line-height:1.25;color:#55606b}
 .up .pct,.up .ch{color:var(--up)}
 .dn .pct,.dn .ch{color:var(--dn)}
-.chart{flex:1 1 0;min-height:44px;position:relative}
+.chart{flex:none;height:var(--chh,100px);position:relative}
 .chart svg{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
 .base{stroke:#6b7480;stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
 .ln{fill:none;stroke-width:1.5;stroke-linejoin:round;vector-effect:non-scaling-stroke}
@@ -76,8 +90,9 @@ h1{margin:0;font-size:22px;font-weight:700}
     </div>
     <div class="ctl">
       <div class="grp"><span class="lbl">チャート</span><span id="periodBtns" class="grp"></span></div>
-      <div class="grp"><span class="lbl">表示数</span><span id="sizeBtns" class="grp"></span></div>
+      <div class="grp"><span class="lbl">列数</span><span id="sizeBtns" class="grp"></span></div>
       <div class="grp"><span class="lbl">日足・週足の形</span><button type="button" class="btn" id="candleBtn" aria-pressed="false">ローソク足</button></div>
+      <div class="grp"><button type="button" class="btn" id="showBtn" aria-expanded="false">表示項目</button></div>
       <div class="grp"><label class="lbl" for="siteSel">開くサイト</label><select id="siteSel" class="sel"></select></div>
       <div class="grp">
         <button type="button" class="btn" id="jpBtn" aria-pressed="false">日本式配色（上昇=赤）</button>
@@ -85,6 +100,7 @@ h1{margin:0;font-size:22px;font-weight:700}
       </div>
     </div>
   </div>
+  <div id="showPanel" role="group" aria-label="表示する項目"></div>
   <div class="tabs" id="tabs" role="tablist" hidden></div>
   <div id="msg" role="status"></div>
   <div class="grid" id="grid"></div>
@@ -95,12 +111,24 @@ h1{margin:0;font-size:22px;font-weight:700}
   'use strict';
 
   var SIZES = [6, 7, 8, 9, 10];
+  var SHOW_ITEMS = [
+    { key: 'no', label: '番号（#1…）' },
+    { key: 'ma', label: '移動平均線（5日・25日／ローソク足のとき）' },
+    { key: 'vol', label: '出来高の棒（日足・週足）' },
+    { key: 'hl', label: '当日の高値・安値' },
+    { key: 'vr', label: '出来高の倍率' },
+    { key: 'rng', label: '52週の高値・安値の位置' },
+    { key: 'rsi', label: 'RSI' },
+    { key: 'dev', label: '25日乖離率' },
+    { key: 'ret', label: '1週・1か月・3か月の騰落率' },
+    { key: 'ytd', label: '「年初来高値」の印' }
+  ];
   var LOOK = {
-    6: { minRow: 190, name: 15, pct: 30, price: 20, chg: 14, code: 11 },
-    7: { minRow: 170, name: 14, pct: 26, price: 18, chg: 13, code: 11 },
-    8: { minRow: 150, name: 13, pct: 22, price: 16, chg: 12, code: 10 },
-    9: { minRow: 134, name: 12, pct: 19, price: 14, chg: 11, code: 9 },
-    10: { minRow: 122, name: 11, pct: 17, price: 13, chg: 10, code: 9 }
+    6: { chh: 130, xs: 11, name: 15, pct: 30, price: 20, chg: 14, code: 11 },
+    7: { chh: 118, xs: 11, name: 14, pct: 26, price: 18, chg: 13, code: 11 },
+    8: { chh: 104, xs: 10, name: 13, pct: 22, price: 16, chg: 12, code: 10 },
+    9: { chh: 92, xs: 10, name: 12, pct: 19, price: 14, chg: 11, code: 9 },
+    10: { chh: 80, xs: 9, name: 11, pct: 17, price: 13, chg: 10, code: 9 }
   };
   var PERIODS = [
     { key: 'day', label: '当日', cap: '当日の値動き（点線＝前日終値）' },
@@ -141,8 +169,15 @@ h1{margin:0;font-size:22px;font-weight:700}
     jp: load('jp', '0') === '1',
     tab: load('tab', ''),
     candle: load('candle', '0') === '1',
-    site: load('site', 'kabutan')
+    site: load('site', 'kabutan'),
+    show: {}
   };
+  (function () {
+    var d = { no: 1, ma: 1, vol: 1, hl: 1, vr: 1, rng: 1, rsi: 1, dev: 1, ret: 1, ytd: 1 };
+    var saved = {};
+    try { saved = JSON.parse(load('show', '{}')) || {}; } catch (e) { saved = {}; }
+    for (var k in d) state.show[k] = saved[k] === undefined ? d[k] : saved[k];
+  })();
   if (SIZES.indexOf(state.size) < 0) state.size = 8;
   if (!SITES.some(function (x) { return x.key === state.site; })) state.site = 'kabutan';
   if (!PERIODS.some(function (p) { return p.key === state.period; })) state.period = 'day';
@@ -228,18 +263,52 @@ h1{margin:0;font-size:22px;font-weight:700}
     return { cat: String(it.cat || ''), symbol: s, name: it.name || s, code: code, kind: kind, dec: dec, decFixed: (it.decimals !== undefined && it.decimals !== null), link: link };
   }
 
-  // ローソク足のSVGを作る。bars: [[始値,高値,安値,終値], ...]
-  function candleBox(bars) {
+  function sma(vals, k) {
+    var out = [], sum = 0, i;
+    for (i = 0; i < vals.length; i++) {
+      sum += vals[i];
+      if (i >= k) sum -= vals[i - k];
+      out.push(i >= k - 1 ? sum / k : null);
+    }
+    return out;
+  }
+  // 保存してある4本値・出来高から、表示する本数ぶんと移動平均線を用意する
+  function prepCandles(rec) {
+    var daily = state.period === 'daily';
+    var ob = daily ? rec.dailyOhlc : rec.weeklyOhlc;
+    if (!ob || ob.length < 2) return null;
+    var ov = daily ? rec.dailyVol : rec.weeklyVol;
+    var shown = Math.min(ob.length, daily ? 62 : 52);
+    var closes = ob.map(function (b) { return b[3]; });
+    var m5 = sma(closes, 5), m25 = sma(closes, 25);
+    var from = ob.length - shown;
+    return { bars: ob.slice(from), vols: ov && ov.length === ob.length ? ov.slice(from) : null, m5: m5.slice(from), m25: m25.slice(from) };
+  }
+  // ローソク足のSVGを作る。pc: prepCandles の結果
+  function candleBox(pc) {
     var box = el('div', 'chart');
+    var bars = pc ? pc.bars : null;
     var n = bars ? bars.length : 0, i;
     if (n < 2) { box.appendChild(el('div', 'nodata', 'チャートなし')); return box; }
+    var showVol = state.show.vol && pc.vols;
+    var showMa = state.show.ma;
+    var bottom = showVol ? 52 : 66;
     var mn = Infinity, mx = -Infinity;
     for (i = 0; i < n; i++) { if (bars[i][2] < mn) mn = bars[i][2]; if (bars[i][1] > mx) mx = bars[i][1]; }
     var span = (mx - mn) || 1;
     mn -= span * 0.08; mx += span * 0.08; span = mx - mn;
-    function Y(v) { return Math.round((4 + (mx - v) / span * 62) * 10) / 10; }
+    function Y(v) { return Math.round((4 + (mx - v) / span * (bottom - 4)) * 10) / 10; }
     var step = 200 / n, bw = Math.max(step * 0.62, 0.6);
     var svg = svgEl('svg', { viewBox: '0 0 200 70', preserveAspectRatio: 'none', 'aria-hidden': 'true' });
+    if (showVol) {
+      var vm = 0;
+      for (i = 0; i < n; i++) if (pc.vols[i] > vm) vm = pc.vols[i];
+      if (vm > 0) for (i = 0; i < n; i++) {
+        var vh = pc.vols[i] / vm * 15;
+        if (vh <= 0) continue;
+        svg.appendChild(svgEl('rect', { 'class': bars[i][3] >= bars[i][0] ? 'vu' : 'vd', x: String(Math.round(((i + 0.5) * step - bw / 2) * 100) / 100), width: String(Math.round(bw * 100) / 100), y: String(Math.round((69 - vh) * 10) / 10), height: String(Math.round(vh * 10) / 10) }));
+      }
+    }
     for (i = 0; i < n; i++) {
       var b = bars[i], x = Math.round((i + 0.5) * step * 100) / 100;
       var g = svgEl('g', { 'class': b[3] >= b[0] ? 'cu' : 'cd2' });
@@ -247,6 +316,13 @@ h1{margin:0;font-size:22px;font-weight:700}
       var yt = Y(Math.max(b[0], b[3])), yb = Y(Math.min(b[0], b[3]));
       g.appendChild(svgEl('rect', { 'class': 'cb2', x: String(Math.round((x - bw / 2) * 100) / 100), width: String(Math.round(bw * 100) / 100), y: String(yt), height: String(Math.max(yb - yt, 0.8)) }));
       svg.appendChild(g);
+    }
+    if (showMa) {
+      [['ma5', pc.m5], ['ma25', pc.m25]].forEach(function (m) {
+        var pts = [];
+        for (var j = 0; j < n; j++) if (m[1][j] !== null && m[1][j] !== undefined) pts.push((Math.round((j + 0.5) * step * 10) / 10) + ',' + Y(m[1][j]));
+        if (pts.length > 1) svg.appendChild(svgEl('polyline', { 'class': m[0], points: pts.join(' ') }));
+      });
     }
     box.appendChild(svg);
     return box;
@@ -291,10 +367,11 @@ h1{margin:0;font-size:22px;font-weight:700}
       a.appendChild(cb);
     }
     var th = el('div', 'th');
-    th.appendChild(el('span', 'nm', item.name));
+    if (state.show.no) th.appendChild(el('span', 'no', '#' + (index + 1)));
     th.appendChild(el('span', 'cd', item.code));
+    th.appendChild(el('span', 'nm', item.name));
     if (has && rec.stale) th.appendChild(el('span', 'tag', '前回分'));
-    if (state.size < 8) th.appendChild(el('span', 'no', '#' + (index + 1)));
+    if (has && state.show.ytd && rec.ex && rec.ex.ytd === 1) th.appendChild(el('span', 'tag', '年初来高値'));
     a.appendChild(th);
 
     var band = el('div', 'band');
@@ -307,12 +384,9 @@ h1{margin:0;font-size:22px;font-weight:700}
       if (state.period === 'day') { values = rec.day; base = rec.prev; }
       else { values = state.period === 'daily' ? rec.daily : rec.weekly; base = values && values.length ? values[0] : NaN; }
     }
-    var bars = null;
-    if (has && state.candle && state.period !== 'day') {
-      var ob = state.period === 'daily' ? rec.dailyOhlc : rec.weeklyOhlc;
-      if (ob && ob.length >= 2) bars = ob;
-    }
-    a.appendChild(bars ? candleBox(bars) : chartBox(values, base));
+    var pc = null;
+    if (has && state.candle && state.period !== 'day') pc = prepCandles(rec);
+    a.appendChild(pc ? candleBox(pc) : chartBox(values, base));
 
     var tp = el('div', 'tp');
     var pr = el('span', 'pr', '—');
@@ -333,10 +407,67 @@ h1{margin:0;font-size:22px;font-weight:700}
         ch.textContent = sign + fmt(Math.abs(diff), dec);
         a.className += diff > 0 ? ' up' : (diff < 0 ? ' dn' : '');
       }
+      appendExtras(a, rec, dec);
     } else {
       pr.textContent = 'データなし';
     }
     return a;
+  }
+
+  function pctSpan(v) {
+    if (typeof v !== 'number') return null;
+    var sp = el('span', v > 0 ? 'u' : (v < 0 ? 'd' : ''), (v > 0 ? '+' : '') + v + '%');
+    return sp;
+  }
+  function xrow(left, right) {
+    var r = el('div', 'xr');
+    var l = el('span'), rr = el('span');
+    [].concat(left).forEach(function (x) { if (x) l.appendChild(typeof x === 'string' ? document.createTextNode(x) : x); });
+    [].concat(right).forEach(function (x) { if (x) rr.appendChild(typeof x === 'string' ? document.createTextNode(x) : x); });
+    r.appendChild(l); r.appendChild(rr);
+    return r;
+  }
+  function bold(t) { return el('b', '', t); }
+  // 追加の項目（拡張機能が計算して保存した rec.ex を表示します）
+  function appendExtras(a, rec, dec) {
+    var ex = rec.ex;
+    if (!ex) return;
+    var sh = state.show, last = null, i;
+    var big = function (v) { return fmt(v, v < 1000 && v % 1 !== 0 ? Math.min(dec, 1) : dec); };
+    if ((sh.hl && typeof ex.dh === 'number' && typeof ex.dl === 'number') || (sh.vr && typeof ex.vr === 'number')) {
+      a.appendChild(xrow(
+        sh.hl && typeof ex.dh === 'number' ? '高 ' + big(ex.dh) + ' / 安 ' + big(ex.dl) : '',
+        sh.vr && typeof ex.vr === 'number' ? ['出来高 ', bold(ex.vr + '倍')] : ''));
+    }
+    if (sh.rng && typeof ex.hi52 === 'number' && typeof ex.lo52 === 'number' && ex.hi52 > ex.lo52) {
+      var rg = el('div', 'rg');
+      var t = el('div', 't');
+      t.appendChild(el('span', '', '52週 安 ' + big(ex.lo52)));
+      t.appendChild(el('span', '', '高 ' + big(ex.hi52)));
+      rg.appendChild(t);
+      var bar = el('div', 'bar');
+      var mk = el('i');
+      var pos = Math.max(0, Math.min(100, (rec.price - ex.lo52) / (ex.hi52 - ex.lo52) * 100));
+      mk.style.left = 'calc(' + pos + '% - 1px)';
+      bar.appendChild(mk); rg.appendChild(bar);
+      a.appendChild(rg);
+    }
+    if ((sh.rsi && typeof ex.rsi === 'number') || (sh.dev && typeof ex.dev === 'number')) {
+      a.appendChild(xrow(
+        sh.rsi && typeof ex.rsi === 'number' ? ['RSI ', bold(String(ex.rsi))] : '',
+        sh.dev && typeof ex.dev === 'number' ? ['25日乖離 ', pctSpan(ex.dev)] : ''));
+    }
+    if (sh.ret && (typeof ex.r1 === 'number' || typeof ex.r1m === 'number' || typeof ex.r3 === 'number')) {
+      var rr = el('div', 'xr');
+      [['1週 ', ex.r1], ['1か月 ', ex.r1m], ['3か月 ', ex.r3]].forEach(function (p) {
+        var sp = el('span'); sp.appendChild(document.createTextNode(p[0])); var v = pctSpan(p[1]); if (v) sp.appendChild(v); else sp.appendChild(document.createTextNode('—'));
+        rr.appendChild(sp);
+      });
+      a.appendChild(rr);
+      last = rr;
+    }
+    var rows = a.querySelectorAll('.xr, .rg');
+    if (rows.length) rows[rows.length - 1].className += ' sp';
   }
 
   function render() {
@@ -344,8 +475,7 @@ h1{margin:0;font-size:22px;font-weight:700}
     var size = state.size;
     var look = LOOK[size];
     renderTabs();
-    var items = (currentTab().items || []).map(norm).slice(0, size * size);
-    var rows = Math.max(1, Math.ceil(items.length / size));
+    var items = (currentTab().items || []).map(norm).slice(0, 500);
     var hasCat = items.some(function (it) { return !!it.cat; });
     var catColor = {}, catCount = 0;
     var catInfos = items.map(function (it, i) {
@@ -355,12 +485,12 @@ h1{margin:0;font-size:22px;font-weight:700}
       var first = i === 0 || items[i - 1].cat !== it.cat;
       return { has: true, label: first ? it.cat : '', bg: catColor[it.cat] };
     });
-    var minRow = look.minRow + (hasCat ? 18 : 0);
-
-    document.getElementById('app').style.minHeight = (110 + (getTabs().length > 1 ? 56 : 0) + rows * minRow + (rows - 1) * 6) + 'px';
     var grid = document.getElementById('grid');
     grid.style.gridTemplateColumns = 'repeat(' + size + ', minmax(0, 1fr))';
-    grid.style.gridTemplateRows = 'repeat(' + rows + ', minmax(' + minRow + 'px, 1fr))';
+    grid.style.gridTemplateRows = '';
+    grid.style.gridAutoRows = 'auto';
+    grid.style.setProperty('--chh', look.chh + 'px');
+    grid.style.setProperty('--xs', look.xs + 'px');
     grid.style.setProperty('--name', look.name + 'px');
     grid.style.setProperty('--pct', look.pct + 'px');
     grid.style.setProperty('--price', look.price + 'px');
@@ -435,10 +565,25 @@ h1{margin:0;font-size:22px;font-weight:700}
     });
     var sb = document.getElementById('sizeBtns');
     SIZES.forEach(function (n) {
-      var b = el('button', 'btn', n + '列×' + n + '行（' + (n * n) + '）');
+      var b = el('button', 'btn', n + '列');
       b.type = 'button';
       b.addEventListener('click', function () { state.size = n; save('size', n); render(); });
       sb.appendChild(b);
+    });
+    var panel = document.getElementById('showPanel');
+    var sbtn = document.getElementById('showBtn');
+    SHOW_ITEMS.forEach(function (it) {
+      var lab = el('label');
+      var cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = !!state.show[it.key];
+      cb.addEventListener('change', function () { state.show[it.key] = cb.checked ? 1 : 0; save('show', JSON.stringify(state.show)); render(); });
+      lab.appendChild(cb); lab.appendChild(document.createTextNode(it.label));
+      panel.appendChild(lab);
+    });
+    sbtn.addEventListener('click', function () {
+      var on = panel.className.indexOf('on') < 0;
+      panel.className = on ? 'on' : '';
+      sbtn.setAttribute('aria-expanded', on ? 'true' : 'false');
     });
     document.getElementById('candleBtn').addEventListener('click', function () { state.candle = !state.candle; save('candle', state.candle ? '1' : '0'); render(); });
     var ss = document.getElementById('siteSel');
